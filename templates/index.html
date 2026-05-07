@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ReDrop — Smart Blood Donation System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blood:    #C0181A;
+  --blood-dk: #8C0F10;
+  --blood-lt: #FF4B4D;
+  --cream:    #FFF8F4;
+  --off-white:#FFF3EE;
+  --charcoal: #1A1218;
+  --muted:    #7A6670;
+  --border:   rgba(192,24,26,0.15);
+  --glass:    rgba(255,255,255,0.06);
+  --success:  #1E7A5B;
+  --warn:     #B85C00;
+  --crit:     #8C0F10;
+  --card-bg:  rgba(255,255,255,0.85);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin:0; padding:0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--charcoal);
+  color: var(--charcoal);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.bg-canvas {
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 10% 15%, rgba(192,24,26,0.22) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 90% 85%, rgba(140,15,16,0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 100% at 50% 50%, #1A1218 0%, #0D0A0C 100%);
+  z-index: 0;
+}
+
+.bg-grid {
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(192,24,26,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(192,24,26,0.05) 1px, transparent 1px);
+  background-size: 60px 60px;
+  z-index: 0;
+}
+
+.app { position: relative; z-index: 1; min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ── HEADER ── */
+header {
+  padding: 0 48px;
+  border-bottom: 1px solid rgba(192,24,26,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 72px;
+  backdrop-filter: blur(20px);
+  background: rgba(26,18,24,0.7);
+  position: sticky; top: 0; z-index: 100;
+}
+
+.logo { display: flex; align-items: center; gap: 14px; }
+
+.logo-mark {
+  width: 42px; height: 42px;
+  background: var(--blood);
+  border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  box-shadow: 0 0 20px rgba(192,24,26,0.5);
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%,100% { box-shadow: 0 0 20px rgba(192,24,26,0.5); }
+  50%      { box-shadow: 0 0 40px rgba(192,24,26,0.8), 0 0 80px rgba(192,24,26,0.3); }
+}
+
+.logo-text { font-family:'Syne',sans-serif; font-weight:800; font-size:24px; color:#fff; letter-spacing:-0.5px; }
+.logo-text span { color: var(--blood-lt); }
+
+.header-meta { font-size: 12px; color: rgba(255,255,255,0.4); text-align: right; line-height: 1.5; }
+.header-meta strong { color: rgba(255,255,255,0.7); display: block; }
+
+/* ── HERO ── */
+.hero {
+  padding: 80px 48px 60px;
+  max-width: 1400px; margin: 0 auto; width: 100%;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 60px; align-items: center;
+}
+
+.hero-text h1 {
+  font-family:'Syne',sans-serif; font-weight:800;
+  font-size: clamp(40px, 5vw, 68px);
+  line-height: 1.05; color: #fff; letter-spacing: -2px; margin-bottom: 20px;
+}
+.hero-text h1 .accent { color: var(--blood-lt); display: block; }
+.hero-text p { color: rgba(255,255,255,0.55); font-size: 17px; line-height: 1.7; max-width: 440px; }
+
+.hero-badges { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 32px; }
+.badge {
+  padding: 6px 14px; border-radius: 100px; font-size: 12px; font-weight: 500;
+  border: 1px solid; letter-spacing: 0.3px;
+}
+.badge-plsql { border-color: rgba(192,24,26,0.5); color: var(--blood-lt); background: rgba(192,24,26,0.1); }
+.badge-other { border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.05); }
+
+.hero-stats { display: grid; grid-template-columns: repeat(2,1fr); gap: 16px; }
+
+.stat-card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px; padding: 28px 24px;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease; cursor: default;
+}
+.stat-card:hover { background: rgba(192,24,26,0.08); border-color: rgba(192,24,26,0.3); transform: translateY(-3px); }
+
+.stat-num { font-family:'Syne',sans-serif; font-size: 42px; font-weight:800; color:#fff; line-height:1; margin-bottom:6px; }
+.stat-num span { color: var(--blood-lt); font-size:24px; }
+.stat-label { font-size:13px; color:rgba(255,255,255,0.45); }
+.drop-icon { font-size:32px; display:block; margin-bottom:10px; }
+
+/* ── NAV TABS ── */
+.nav-strip { max-width:1400px; margin:0 auto; padding:0 48px; width:100%; border-bottom:1px solid rgba(255,255,255,0.06); }
+.tabs { display:flex; gap:2px; overflow-x:auto; scrollbar-width:none; }
+
+.tab-btn {
+  padding:16px 22px; background:transparent; border:none; cursor:pointer;
+  font-family:'DM Sans',sans-serif; font-size:14px; font-weight:500;
+  color:rgba(255,255,255,0.4); letter-spacing:0.2px;
+  border-bottom:2px solid transparent; transition:all 0.25s ease;
+  white-space:nowrap; display:flex; align-items:center; gap:8px;
+}
+.tab-btn:hover { color:rgba(255,255,255,0.75); }
+.tab-btn.active { color:#fff; border-bottom-color:var(--blood); }
+.tab-icon { font-size:16px; }
+
+/* ── MAIN ── */
+main { flex:1; max-width:1400px; margin:0 auto; padding:40px 48px; width:100%; }
+
+.panel { display:none; }
+.panel.active { display:block; animation:fadein 0.3s ease; }
+
+@keyframes fadein { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── SECTION HEADERS ── */
+.section-head { margin-bottom:32px; }
+.section-head h2 { font-family:'Syne',sans-serif; font-weight:700; font-size:28px; color:#fff; letter-spacing:-0.5px; }
+.section-head p { color:rgba(255,255,255,0.45); margin-top:6px; font-size:14px; }
+
+.tag {
+  display:inline-block; font-size:11px; font-weight:600; padding:3px 10px;
+  border-radius:100px; background:rgba(192,24,26,0.2); color:var(--blood-lt);
+  border:1px solid rgba(192,24,26,0.3); letter-spacing:1px; text-transform:uppercase; margin-bottom:10px;
+}
+
+code {
+  color:var(--blood-lt); background:rgba(192,24,26,0.1);
+  padding:2px 7px; border-radius:5px; font-size:0.9em;
+}
+
+/* ── GLASS CARDS ── */
+.glass-card {
+  background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+  border-radius:24px; padding:32px; backdrop-filter:blur(12px);
+}
+
+/* ── FORMS ── */
+.form-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:20px; }
+.form-field { display:flex; flex-direction:column; gap:8px; }
+
+label { font-size:12px; font-weight:600; letter-spacing:0.8px; text-transform:uppercase; color:rgba(255,255,255,0.5); }
+
+input, select {
+  padding:12px 16px; border-radius:12px; border:1px solid rgba(255,255,255,0.1);
+  background:rgba(255,255,255,0.07); color:#fff;
+  font-family:'DM Sans',sans-serif; font-size:14px; transition:all 0.2s; outline:none; width:100%;
+}
+input::placeholder { color:rgba(255,255,255,0.25); }
+input:focus, select:focus {
+  border-color:var(--blood); background:rgba(192,24,26,0.08);
+  box-shadow:0 0 0 3px rgba(192,24,26,0.15);
+}
+select option { background:#222; color:#fff; }
+
+/* ── BUTTONS ── */
+.btn {
+  display:inline-flex; align-items:center; justify-content:center; gap:8px;
+  padding:13px 28px; border-radius:12px; border:none; cursor:pointer;
+  font-family:'DM Sans',sans-serif; font-size:14px; font-weight:600;
+  letter-spacing:0.2px; transition:all 0.2s ease; white-space:nowrap;
+}
+.btn-blood { background:var(--blood); color:#fff; box-shadow:0 4px 20px rgba(192,24,26,0.4); }
+.btn-blood:hover { background:var(--blood-lt); transform:translateY(-2px); box-shadow:0 8px 30px rgba(192,24,26,0.5); }
+.btn-outline { background:transparent; color:rgba(255,255,255,0.7); border:1px solid rgba(255,255,255,0.15); }
+.btn-outline:hover { background:rgba(255,255,255,0.07); color:#fff; }
+
+/* ── ALERTS ── */
+.alert { padding:14px 18px; border-radius:12px; font-size:14px; font-weight:500; margin-top:16px; display:none; }
+.alert.success { background:rgba(30,122,91,0.15); border:1px solid rgba(30,122,91,0.3); color:#4ecca3; display:block; }
+.alert.error   { background:rgba(192,24,26,0.15); border:1px solid rgba(192,24,26,0.35); color:#FF7B7D; display:block; }
+
+/* ── DONOR CARDS ── */
+#results-area { margin-top:32px; }
+.results-header { font-family:'Syne',sans-serif; font-size:14px; font-weight:600; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:1px; margin-bottom:16px; }
+.donor-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px; }
+
+.donor-card {
+  background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);
+  border-radius:20px; padding:24px; transition:all 0.3s ease;
+  animation:fadein 0.4s ease both;
+}
+.donor-card:hover { background:rgba(255,255,255,0.08); border-color:rgba(192,24,26,0.3); transform:translateY(-3px); box-shadow:0 12px 40px rgba(0,0,0,0.3); }
+
+.donor-top { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:16px; }
+.donor-avatar { width:48px; height:48px; border-radius:14px; background:var(--blood); display:flex; align-items:center; justify-content:center; font-family:'Syne',sans-serif; font-weight:800; font-size:18px; color:#fff; flex-shrink:0; }
+.bg-badge { padding:6px 12px; border-radius:100px; font-family:'Syne',sans-serif; font-weight:800; font-size:15px; background:rgba(192,24,26,0.15); color:var(--blood-lt); border:1px solid rgba(192,24,26,0.3); }
+.donor-name { font-family:'Syne',sans-serif; font-weight:700; font-size:16px; color:#fff; margin-bottom:4px; }
+.donor-meta { font-size:13px; color:rgba(255,255,255,0.4); display:flex; flex-direction:column; gap:4px; }
+
+.avail-pill { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; padding:5px 12px; border-radius:100px; margin-top:12px; }
+.avail-pill.yes { background:rgba(30,122,91,0.15); color:#4ecca3; border:1px solid rgba(30,122,91,0.3); }
+.avail-pill.no  { background:rgba(192,24,26,0.1); color:#FF7B7D; border:1px solid rgba(192,24,26,0.2); }
+
+.dot { width:7px; height:7px; border-radius:50%; }
+.dot.yes { background:#4ecca3; animation:blink 2s infinite; }
+.dot.no  { background:#FF7B7D; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.days-chip { font-size:11px; color:rgba(255,255,255,0.3); margin-top:8px; font-style:italic; }
+
+/* ── STATS ── */
+.stats-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; margin-top:8px; }
+.stat-row { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07); border-radius:16px; padding:20px; transition:all 0.3s; }
+.stat-row:hover { background:rgba(192,24,26,0.07); border-color:rgba(192,24,26,0.25); }
+.stat-bg-label { font-family:'Syne',sans-serif; font-weight:800; font-size:22px; color:var(--blood-lt); margin-bottom:12px; }
+.stat-bar-wrap { margin-bottom:8px; }
+.stat-bar-label { display:flex; justify-content:space-between; font-size:12px; color:rgba(255,255,255,0.4); margin-bottom:5px; }
+.stat-bar-track { height:6px; background:rgba(255,255,255,0.08); border-radius:100px; overflow:hidden; }
+.stat-bar-fill { height:100%; background:linear-gradient(90deg,var(--blood),var(--blood-lt)); border-radius:100px; transition:width 0.8s cubic-bezier(0.16,1,0.3,1); }
+.stat-bar-fill.avail { background:linear-gradient(90deg,#1E7A5B,#4ecca3); }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x:auto; border-radius:20px; border:1px solid rgba(255,255,255,0.08); }
+table { width:100%; border-collapse:collapse; font-size:13.5px; }
+thead th { padding:14px 18px; background:rgba(255,255,255,0.04); color:rgba(255,255,255,0.4); font-size:11px; font-weight:600; letter-spacing:1px; text-transform:uppercase; text-align:left; border-bottom:1px solid rgba(255,255,255,0.06); }
+tbody tr { border-bottom:1px solid rgba(255,255,255,0.04); transition:background 0.2s; }
+tbody tr:hover { background:rgba(255,255,255,0.04); }
+tbody tr:last-child { border-bottom:none; }
+tbody td { padding:14px 18px; color:rgba(255,255,255,0.75); vertical-align:middle; }
+.td-name { font-weight:600; color:#fff; }
+
+.urgency-pill { padding:4px 10px; border-radius:100px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; }
+.urgency-Normal   { background:rgba(255,255,255,0.08); color:rgba(255,255,255,0.5); }
+.urgency-Urgent   { background:rgba(184,92,0,0.2); color:#FFA040; border:1px solid rgba(184,92,0,0.3); }
+.urgency-Critical { background:rgba(192,24,26,0.2); color:#FF7B7D; border:1px solid rgba(192,24,26,0.3); animation:blink 1.5s infinite; }
+
+.blood-chip { display:inline-block; font-family:'Syne',sans-serif; font-weight:800; font-size:12px; padding:3px 9px; border-radius:8px; background:rgba(192,24,26,0.15); color:var(--blood-lt); }
+
+/* ── EMPTY STATE ── */
+.empty-state { text-align:center; padding:60px 20px; color:rgba(255,255,255,0.25); }
+.empty-state .icon { font-size:48px; margin-bottom:12px; }
+.empty-state p { font-size:14px; }
+
+/* ── SPLIT ── */
+.split { display:grid; grid-template-columns:1fr 1fr; gap:24px; }
+
+/* ── PLSQL BANNER ── */
+.plsql-banner {
+  background:linear-gradient(135deg,rgba(192,24,26,0.12),rgba(140,15,16,0.06));
+  border:1px solid rgba(192,24,26,0.25); border-radius:16px;
+  padding:20px 24px; margin-bottom:24px;
+  display:flex; align-items:center; gap:16px;
+}
+.plsql-banner .icon { font-size:28px; flex-shrink:0; }
+.plsql-banner h4 { font-family:'Syne',sans-serif; font-weight:700; color:var(--blood-lt); font-size:14px; margin-bottom:3px; }
+.plsql-banner p { font-size:13px; color:rgba(255,255,255,0.45); }
+
+/* ── SPINNER ── */
+.spinner { width:32px; height:32px; border:3px solid rgba(255,255,255,0.1); border-top-color:var(--blood); border-radius:50%; animation:spin 0.8s linear infinite; margin:40px auto; }
+@keyframes spin { to{transform:rotate(360deg)} }
+
+/* ── FOOTER ── */
+footer {
+  border-top:1px solid rgba(255,255,255,0.06);
+  padding:24px 48px;
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:12px; color:rgba(255,255,255,0.25);
+  max-width:1400px; margin:0 auto; width:100%;
+}
+.footer-chips { display:flex; gap:8px; }
+.footer-chip { padding:4px 10px; border-radius:100px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); font-size:11px; }
+
+/* ── MODAL ── */
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:200; align-items:center; justify-content:center; }
+.modal-overlay.open { display:flex; }
+.modal { background:#1E151B; border:1px solid rgba(255,255,255,0.1); border-radius:24px; padding:36px; width:90%; max-width:440px; animation:fadein 0.2s ease; }
+.modal h3 { font-family:'Syne',sans-serif; font-weight:700; font-size:20px; color:#fff; margin-bottom:6px; }
+.modal p { font-size:13px; color:rgba(255,255,255,0.4); margin-bottom:24px; }
+.modal-actions { display:flex; gap:12px; margin-top:20px; }
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  header { padding:0 20px; }
+  .hero { grid-template-columns:1fr; padding:40px 20px 30px; gap:32px; }
+  main { padding:24px 20px; }
+  .nav-strip { padding:0 20px; }
+  .split { grid-template-columns:1fr; }
+  footer { padding:16px 20px; flex-direction:column; gap:12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="bg-canvas"></div>
+<div class="bg-grid"></div>
+
+<div class="app">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-mark">🩸</div>
+    <span class="logo-text">Re<span>Drop</span></span>
+  </div>
+  <div class="header-meta">
+    <strong>DBMS Project — UCS310</strong>
+    Thapar Institute of Engineering &amp; Technology
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-text">
+    <h1>Smart &amp; Sustainable<br><span class="accent">Blood Donation</span></h1>
+    <p>A centralized, database-driven system connecting donors, blood banks, and hospitals — powered by MySQL with PL/SQL procedures, triggers, functions &amp; cursors.</p>
+    <div class="hero-badges">
+      <span class="badge badge-plsql">⚡ PL/SQL Procedures &amp; Functions</span>
+      <span class="badge badge-plsql">🔄 Triggers &amp; Cursors</span>
+      <span class="badge badge-other">MySQL 8</span>
+      <span class="badge badge-other">Flask Backend</span>
+    </div>
+  </div>
+
+  <div class="hero-stats">
+    <div class="stat-card">
+      <span class="drop-icon">🩸</span>
+      <div class="stat-num" id="hero-total">—</div>
+      <div class="stat-label">Total Donors Registered</div>
+    </div>
+    <div class="stat-card">
+      <span class="drop-icon">✅</span>
+      <div class="stat-num" id="hero-avail">—</div>
+      <div class="stat-label">Available Right Now</div>
+    </div>
+    <div class="stat-card">
+      <span class="drop-icon">🚨</span>
+      <div class="stat-num" id="hero-requests">—</div>
+      <div class="stat-label">Emergency Requests</div>
+    </div>
+    <div class="stat-card">
+      <span class="drop-icon">🏥</span>
+      <div class="stat-num">8<span>+</span></div>
+      <div class="stat-label">Blood Groups Tracked</div>
+    </div>
+  </div>
+</div>
+
+<!-- NAV TABS -->
+<div class="nav-strip">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="showTab('search')"    id="tab-search"><span class="tab-icon">🔍</span> Find Donors</button>
+    <button class="tab-btn"        onclick="showTab('register')"  id="tab-register"><span class="tab-icon">➕</span> Register Donor</button>
+    <button class="tab-btn"        onclick="showTab('emergency')" id="tab-emergency"><span class="tab-icon">🚨</span> Emergency Request</button>
+    <button class="tab-btn"        onclick="showTab('stats')"     id="tab-stats"><span class="tab-icon">📊</span> Blood Stats</button>
+    <button class="tab-btn"        onclick="showTab('donors')"    id="tab-donors"><span class="tab-icon">👥</span> All Donors</button>
+    <button class="tab-btn"        onclick="showTab('requests')"  id="tab-requests"><span class="tab-icon">📋</span> All Requests</button>
+    <button class="tab-btn"        onclick="showTab('update')"    id="tab-update"><span class="tab-icon">✏️</span> Update Donor</button>
+  </div>
+</div>
+
+<!-- MAIN PANELS -->
+<main>
+
+  <!-- ═══ SEARCH ═══ -->
+  <div class="panel active" id="panel-search">
+    <div class="section-head">
+      <div class="tag">PL/SQL Procedure</div>
+      <h2>Find Available Donors</h2>
+      <p>Calls stored procedure <code>find_donors(blood_group, city)</code> which internally calls <code>fn_days_since_donation(donor_id)</code> for each result</p>
+    </div>
+
+    <div class="plsql-banner">
+      <div class="icon">⚡</div>
+      <div>
+        <h4>Procedure: find_donors(p_blood_group, p_city)</h4>
+        <p>Filters donors by blood group &amp; city, calls fn_days_since_donation() for each result. Only returns is_available = TRUE donors, ordered by last donation date.</p>
+      </div>
+    </div>
+
+    <div class="glass-card">
+      <div class="form-grid">
+        <div class="form-field">
+          <label>Blood Group Required</label>
+          <select id="s-bg">
+            <option value="">— Select Group —</option>
+            <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+            <option>O+</option><option>O-</option><option>AB+</option><option>AB-</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>City</label>
+          <input id="s-city" type="text" placeholder="e.g. Delhi">
+        </div>
+      </div>
+      <button class="btn btn-blood" onclick="searchDonors()">🔍 Search Donors</button>
+    </div>
+
+    <div id="results-area"></div>
+  </div>
+
+  <!-- ═══ REGISTER ═══ -->
+  <div class="panel" id="panel-register">
+    <div class="section-head">
+      <div class="tag">SQL INSERT + Trigger Ready</div>
+      <h2>Register New Donor</h2>
+      <p>Inserts into <code>donors</code> table. The trigger <code>trg_check_availability</code> fires automatically on any subsequent UPDATE to manage availability.</p>
+    </div>
+
+    <div class="split">
+      <div class="glass-card">
+        <div class="form-grid" style="grid-template-columns:1fr;">
+          <div class="form-field"><label>Full Name</label><input id="r-name" type="text" placeholder="Donor's full name"></div>
+          <div class="form-field">
+            <label>Blood Group</label>
+            <select id="r-bg"><option value="">— Select —</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option></select>
+          </div>
+          <div class="form-field"><label>City</label><input id="r-city" type="text" placeholder="City"></div>
+          <div class="form-field"><label>Phone (10 digits)</label><input id="r-phone" type="text" placeholder="9XXXXXXXXX" maxlength="10"></div>
+          <div class="form-field"><label>Last Donation Date</label><input id="r-date" type="date"></div>
+        </div>
+        <button class="btn btn-blood" onclick="registerDonor()" style="width:100%;margin-top:8px;">✅ Register Donor</button>
+        <div class="alert" id="r-alert"></div>
+      </div>
+
+      <div class="glass-card" style="background:rgba(192,24,26,0.05);border-color:rgba(192,24,26,0.2);">
+        <h4 style="font-family:'Syne',sans-serif;font-weight:700;color:#fff;margin-bottom:16px;">Eligibility Rules</h4>
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="font-size:20px;">⏱️</span>
+            <div><div style="color:#fff;font-size:13px;font-weight:600;">90-Day Cooldown</div><div style="color:rgba(255,255,255,0.45);font-size:12px;margin-top:2px;">Trigger auto-sets is_available = FALSE if donated within 90 days</div></div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="font-size:20px;">📞</span>
+            <div><div style="color:#fff;font-size:13px;font-weight:600;">Unique Phone</div><div style="color:rgba(255,255,255,0.45);font-size:12px;margin-top:2px;">Each donor must have a unique 10-digit contact (UNIQUE constraint)</div></div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="font-size:20px;">🔄</span>
+            <div><div style="color:#fff;font-size:13px;font-weight:600;">Auto Re-Activation</div><div style="color:rgba(255,255,255,0.45);font-size:12px;margin-top:2px;">Availability restores automatically after 90 days on next update</div></div>
+          </div>
+          <div style="display:flex;gap:12px;align-items:flex-start;">
+            <span style="font-size:20px;">🔑</span>
+            <div><div style="color:#fff;font-size:13px;font-weight:600;">Normalization Applied</div><div style="color:rgba(255,255,255,0.45);font-size:12px;margin-top:2px;">Tables in 3NF/BCNF — blood groups stored separately, no redundancy</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ EMERGENCY ═══ -->
+  <div class="panel" id="panel-emergency">
+    <div class="section-head">
+      <div class="tag">SQL INSERT</div>
+      <h2>Submit Emergency Request</h2>
+      <p>Logs an urgent blood request into the <code>requests</code> table for coordinator action. Critical requests notify eligible donors immediately.</p>
+    </div>
+
+    <div class="split">
+      <div class="glass-card" style="border-color:rgba(192,24,26,0.25);">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+          <span style="font-size:36px;">🚨</span>
+          <div>
+            <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:18px;color:#fff;">Critical Request Form</div>
+            <div style="font-size:13px;color:rgba(255,255,255,0.4);">Visible to all hospital coordinators immediately</div>
+          </div>
+        </div>
+        <div class="form-grid" style="grid-template-columns:1fr;">
+          <div class="form-field"><label>Patient Name</label><input id="e-name" type="text" placeholder="Patient's full name"></div>
+          <div class="form-field">
+            <label>Blood Group Needed</label>
+            <select id="e-bg"><option value="">— Select —</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option></select>
+          </div>
+          <div class="form-field"><label>City / Hospital Location</label><input id="e-city" type="text" placeholder="City"></div>
+          <div class="form-field"><label>Contact Phone</label><input id="e-phone" type="text" placeholder="10-digit number" maxlength="10"></div>
+          <div class="form-field">
+            <label>Urgency Level</label>
+            <select id="e-urgency"><option>Normal</option><option>Urgent</option><option>Critical</option></select>
+          </div>
+        </div>
+        <button class="btn btn-blood" onclick="submitEmergency()" style="width:100%;margin-top:8px;">🚨 Submit Emergency Request</button>
+        <div class="alert" id="e-alert"></div>
+      </div>
+
+      <div class="glass-card" style="background:rgba(184,92,0,0.06);border-color:rgba(184,92,0,0.2);">
+        <h4 style="font-family:'Syne',sans-serif;font-weight:700;color:#fff;margin-bottom:16px;">Urgency Levels Explained</h4>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div style="padding:16px;background:rgba(255,255,255,0.04);border-radius:12px;">
+            <span class="urgency-pill urgency-Normal">Normal</span>
+            <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:8px;">Standard hospital request. Fulfilled within 24–48 hours.</p>
+          </div>
+          <div style="padding:16px;background:rgba(184,92,0,0.08);border-radius:12px;">
+            <span class="urgency-pill urgency-Urgent">Urgent</span>
+            <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:8px;">Required within a few hours. Coordinators alerted immediately.</p>
+          </div>
+          <div style="padding:16px;background:rgba(192,24,26,0.1);border-radius:12px;">
+            <span class="urgency-pill urgency-Critical">🚨 Critical</span>
+            <p style="font-size:12px;color:rgba(255,255,255,0.4);margin-top:8px;">Life-threatening. All eligible donors notified instantly.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ STATS ═══ -->
+  <div class="panel" id="panel-stats">
+    <div class="section-head">
+      <div class="tag">PL/SQL Cursor</div>
+      <h2>Blood Group Statistics</h2>
+      <p>Calls <code>get_blood_group_stats()</code> — a stored procedure using a <strong style="color:#fff;">CURSOR</strong> to iterate all blood groups and build a summary table</p>
+    </div>
+
+    <div class="plsql-banner">
+      <div class="icon">🔄</div>
+      <div>
+        <h4>Cursor: bg_cursor — iterates all blood groups with FETCH LOOP</h4>
+        <p>Pattern: DECLARE CURSOR → OPEN → FETCH INTO variables → CONTINUE HANDLER FOR NOT FOUND → LEAVE LOOP → CLOSE. Results collected into TEMPORARY TABLE.</p>
+      </div>
+    </div>
+
+    <div id="stats-area"><div class="spinner"></div></div>
+  </div>
+
+  <!-- ═══ ALL DONORS ═══ -->
+  <div class="panel" id="panel-donors">
+    <div class="section-head">
+      <div class="tag">SQL SELECT + Stored Function</div>
+      <h2>All Registered Donors</h2>
+      <p>Each row calls <code>fn_days_since_donation(donor_id)</code> — a DETERMINISTIC stored function that computes days elapsed since last donation using DATEDIFF</p>
+    </div>
+    <div id="donors-area"><div class="spinner"></div></div>
+  </div>
+
+  <!-- ═══ ALL REQUESTS ═══ -->
+  <div class="panel" id="panel-requests">
+    <div class="section-head">
+      <div class="tag">Emergency Log</div>
+      <h2>All Emergency Requests</h2>
+      <p>Full log of blood requests submitted by hospital coordinators, ordered by most recent first. Critical requests blink for immediate visibility.</p>
+    </div>
+    <div id="requests-area"><div class="spinner"></div></div>
+  </div>
+
+  <!-- ═══ UPDATE ═══ -->
+  <div class="panel" id="panel-update">
+    <div class="section-head">
+      <div class="tag">SQL UPDATE + BEFORE Trigger</div>
+      <h2>Update Donor's Donation Date</h2>
+      <p>Fires trigger <code>trg_check_availability</code> (BEFORE UPDATE) which automatically recalculates donor availability based on the 90-day cooldown rule</p>
+    </div>
+
+    <div class="plsql-banner">
+      <div class="icon">⚡</div>
+      <div>
+        <h4>Trigger: trg_check_availability (BEFORE UPDATE on donors)</h4>
+        <p>Fires on every UPDATE. Uses DATEDIFF(CURDATE(), NEW.last_donation): if &lt; 90 days → is_available = FALSE, else → TRUE. Transparent to the application layer.</p>
+      </div>
+    </div>
+
+    <div class="split">
+      <div class="glass-card">
+        <div class="form-grid" style="grid-template-columns:1fr;">
+          <div class="form-field"><label>Donor ID</label><input id="u-id" type="number" placeholder="e.g. 1"></div>
+          <div class="form-field"><label>New Last Donation Date</label><input id="u-date" type="date"></div>
+        </div>
+        <button class="btn btn-blood" onclick="updateDonor()" style="width:100%;margin-top:8px;">⚡ Update &amp; Fire Trigger</button>
+        <div class="alert" id="u-alert"></div>
+      </div>
+
+      <div class="glass-card" style="background:rgba(255,255,255,0.02);">
+        <h4 style="font-family:'Syne',sans-serif;font-weight:700;color:#fff;margin-bottom:16px;">Trigger Source Code</h4>
+        <pre style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:16px;font-size:12px;color:#aaa;overflow-x:auto;line-height:1.6;"><span style="color:#FF7B7D;">BEFORE UPDATE</span> ON donors
+FOR EACH ROW
+<span style="color:#FFA040;">BEGIN</span>
+  <span style="color:#FFA040;">IF</span> NEW.last_donation IS NOT NULL <span style="color:#FFA040;">THEN</span>
+    <span style="color:#FFA040;">IF</span> DATEDIFF(CURDATE(),
+         NEW.last_donation) &lt; 90
+    <span style="color:#FFA040;">THEN</span>
+      SET NEW.is_available = <span style="color:#FF7B7D;">FALSE</span>;
+    <span style="color:#FFA040;">ELSE</span>
+      SET NEW.is_available = <span style="color:#4ecca3;">TRUE</span>;
+    <span style="color:#FFA040;">END IF</span>;
+  <span style="color:#FFA040;">END IF</span>;
+<span style="color:#FFA040;">END</span></pre>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<footer>
+  <div>ReDrop — DBMS Project UCS310 &nbsp;|&nbsp; Group 2C41, BE 2nd Year &nbsp;|&nbsp; Anushka Aggarwal · Niharika · Seerat</div>
+  <div class="footer-chips">
+    <span class="footer-chip">MySQL 8</span>
+    <span class="footer-chip">PL/SQL</span>
+    <span class="footer-chip">Flask</span>
+    <span class="footer-chip">TIET Patiala</span>
+  </div>
+</footer>
+
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal">
+    <h3>⚡ Trigger will fire</h3>
+    <p>This UPDATE will execute <strong style="color:var(--blood-lt);">trg_check_availability</strong> automatically. The donor's availability will be recalculated based on the 90-day rule.</p>
+    <div class="modal-actions">
+      <button class="btn btn-blood" onclick="doUpdate()">Confirm &amp; Update</button>
+      <button class="btn btn-outline" onclick="document.getElementById('confirm-modal').classList.remove('open')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const PANELS = ['search','register','emergency','stats','donors','requests','update'];
+
+function showTab(name) {
+  PANELS.forEach(p => {
+    document.getElementById('panel-'+p).classList.remove('active');
+    document.getElementById('tab-'+p).classList.remove('active');
+  });
+  document.getElementById('panel-'+name).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if (name === 'stats')    loadStats();
+  if (name === 'donors')   loadDonors();
+  if (name === 'requests') loadRequests();
+}
+
+// Hero stats
+async function loadHeroStats() {
+  try {
+    const [d, r] = await Promise.all([fetch('/donors'), fetch('/requests')]);
+    const donors = await d.json();
+    const reqs   = await r.json();
+    animateCount('hero-total',    donors.length);
+    animateCount('hero-avail',    donors.filter(x => x.is_available).length);
+    animateCount('hero-requests', reqs.length);
+  } catch(e) {}
+}
+
+function animateCount(id, target) {
+  const el = document.getElementById(id);
+  if (!el || !target) { el && (el.textContent = target); return; }
+  let n = 0, step = Math.max(1, Math.ceil(target/30));
+  const t = setInterval(() => { n = Math.min(n+step, target); el.textContent = n; if(n>=target) clearInterval(t); }, 40);
+}
+
+// Search
+async function searchDonors() {
+  const bg   = document.getElementById('s-bg').value;
+  const city = document.getElementById('s-city').value.trim();
+  const area = document.getElementById('results-area');
+  if (!bg || !city) { area.innerHTML = `<div class="alert error">Please select a blood group and enter a city.</div>`; return; }
+  area.innerHTML = `<div class="spinner"></div>`;
+  try {
+    const res  = await fetch(`/search?blood_group=${encodeURIComponent(bg)}&city=${encodeURIComponent(city)}`);
+    const data = await res.json();
+    if (!data.length) {
+      area.innerHTML = `<div class="empty-state"><div class="icon">🩺</div><p>No available donors found for <strong>${bg}</strong> in <strong>${city}</strong>.<br>Try a different city or blood group.</p></div>`;
+      return;
+    }
+    area.innerHTML = `<div class="results-header">${data.length} Donor${data.length>1?'s':''} Found — ${bg} · ${city}</div><div class="donor-grid">${data.map(donorCard).join('')}</div>`;
+  } catch(e) {
+    area.innerHTML = `<div class="alert error">Could not reach server. Make sure Flask is running on localhost:5000.</div>`;
+  }
+}
+
+function donorCard(d) {
+  const init  = d.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const avail = d.is_available;
+  const days  = d.days_since_donation;
+  const dayStr = days === -1 ? 'First-time donor' : `fn_days_since_donation() → ${days}d ago`;
+  return `<div class="donor-card">
+    <div class="donor-top"><div class="donor-avatar">${init}</div><span class="bg-badge">${d.blood_group}</span></div>
+    <div class="donor-name">${d.name}</div>
+    <div class="donor-meta"><span>📍 ${d.city}</span><span>📞 ${d.phone}</span></div>
+    <div class="avail-pill ${avail?'yes':'no'}"><div class="dot ${avail?'yes':'no'}"></div>${avail?'Available':'Unavailable — donated recently'}</div>
+    <div class="days-chip">${dayStr}</div>
+  </div>`;
+}
+
+// Register
+async function registerDonor() {
+  const fd = new FormData();
+  fd.append('name',          document.getElementById('r-name').value.trim());
+  fd.append('blood_group',   document.getElementById('r-bg').value);
+  fd.append('city',          document.getElementById('r-city').value.trim());
+  fd.append('phone',         document.getElementById('r-phone').value.trim());
+  fd.append('last_donation', document.getElementById('r-date').value);
+  const al = document.getElementById('r-alert');
+  al.className = 'alert';
+  try {
+    const json = await (await fetch('/add_donor',{method:'POST',body:fd})).json();
+    al.className = 'alert '+(json.status==='success'?'success':'error');
+    al.textContent = json.message;
+    if (json.status==='success') { ['r-name','r-bg','r-city','r-phone','r-date'].forEach(id=>document.getElementById(id).value=''); loadHeroStats(); }
+  } catch(e) { al.className='alert error'; al.textContent='Server not reachable.'; }
+}
+
+// Emergency
+async function submitEmergency() {
+  const fd = new FormData();
+  fd.append('patient_name', document.getElementById('e-name').value.trim());
+  fd.append('blood_group',  document.getElementById('e-bg').value);
+  fd.append('city',         document.getElementById('e-city').value.trim());
+  fd.append('phone',        document.getElementById('e-phone').value.trim());
+  fd.append('urgency',      document.getElementById('e-urgency').value);
+  const al = document.getElementById('e-alert');
+  al.className = 'alert';
+  try {
+    const json = await (await fetch('/emergency',{method:'POST',body:fd})).json();
+    al.className = 'alert '+(json.status==='success'?'success':'error');
+    al.textContent = json.message;
+    if (json.status==='success') loadHeroStats();
+  } catch(e) { al.className='alert error'; al.textContent='Server not reachable.'; }
+}
+
+// Stats
+async function loadStats() {
+  const area = document.getElementById('stats-area');
+  area.innerHTML = '<div class="spinner"></div>';
+  try {
+    const data = await (await fetch('/stats')).json();
+    if (!data.length) { area.innerHTML=`<div class="empty-state"><div class="icon">📊</div><p>No data yet.</p></div>`; return; }
+    const maxT = Math.max(...data.map(r=>r.total_donors));
+    area.innerHTML = `<div class="stats-grid">${data.map(r=>`<div class="stat-row">
+      <div class="stat-bg-label">${r.blood_group}</div>
+      <div class="stat-bar-wrap">
+        <div class="stat-bar-label"><span>Total</span><span>${r.total_donors}</span></div>
+        <div class="stat-bar-track"><div class="stat-bar-fill" style="width:0" data-w="${(r.total_donors/maxT*100).toFixed(1)}%"></div></div>
+      </div>
+      <div class="stat-bar-wrap">
+        <div class="stat-bar-label"><span>Available</span><span>${r.available_donors}</span></div>
+        <div class="stat-bar-track"><div class="stat-bar-fill avail" style="width:0" data-w="${r.total_donors>0?(r.available_donors/r.total_donors*100).toFixed(1):0}%"></div></div>
+      </div>
+    </div>`).join('')}</div>`;
+    setTimeout(()=>document.querySelectorAll('.stat-bar-fill[data-w]').forEach(el=>el.style.width=el.getAttribute('data-w')),100);
+  } catch(e) { area.innerHTML=`<div class="alert error" style="display:block;">Server not reachable.</div>`; }
+}
+
+// All Donors
+async function loadDonors() {
+  const area = document.getElementById('donors-area');
+  area.innerHTML = '<div class="spinner"></div>';
+  try {
+    const data = await (await fetch('/donors')).json();
+    if (!data.length) { area.innerHTML=`<div class="empty-state"><div class="icon">👥</div><p>No donors yet.</p></div>`; return; }
+    area.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>ID</th><th>Name</th><th>Blood Group</th><th>City</th><th>Phone</th><th>Last Donation</th><th>Days Since</th><th>Status</th></tr></thead>
+      <tbody>${data.map(d=>`<tr>
+        <td style="color:rgba(255,255,255,0.3);font-size:12px;">#${d.donor_id}</td>
+        <td class="td-name">${d.name}</td>
+        <td><span class="blood-chip">${d.blood_group}</span></td>
+        <td>${d.city}</td>
+        <td style="font-family:monospace;">${d.phone}</td>
+        <td>${d.last_donation||'<span style="color:rgba(255,255,255,0.25)">—</span>'}</td>
+        <td style="font-size:12px;color:rgba(255,255,255,0.4)">${d.days_since_donation===-1?'—':d.days_since_donation+'d'}</td>
+        <td><span class="avail-pill ${d.is_available?'yes':'no'}" style="font-size:11px"><div class="dot ${d.is_available?'yes':'no'}"></div>${d.is_available?'Available':'Unavailable'}</span></td>
+      </tr>`).join('')}</tbody></table></div>`;
+  } catch(e) { area.innerHTML=`<div class="alert error" style="display:block;">Server not reachable.</div>`; }
+}
+
+// All Requests
+async function loadRequests() {
+  const area = document.getElementById('requests-area');
+  area.innerHTML = '<div class="spinner"></div>';
+  try {
+    const data = await (await fetch('/requests')).json();
+    if (!data.length) { area.innerHTML=`<div class="empty-state"><div class="icon">📋</div><p>No requests yet.</p></div>`; return; }
+    area.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr><th>ID</th><th>Patient</th><th>Blood Group</th><th>City</th><th>Phone</th><th>Urgency</th><th>Date</th></tr></thead>
+      <tbody>${data.map(r=>`<tr>
+        <td style="color:rgba(255,255,255,0.3);font-size:12px;">#${r.request_id}</td>
+        <td class="td-name">${r.patient_name}</td>
+        <td><span class="blood-chip">${r.blood_group}</span></td>
+        <td>${r.city}</td>
+        <td style="font-family:monospace;">${r.phone}</td>
+        <td><span class="urgency-pill urgency-${r.urgency}">${r.urgency}</span></td>
+        <td style="font-size:12px;color:rgba(255,255,255,0.4)">${r.request_date?r.request_date.slice(0,16):'—'}</td>
+      </tr>`).join('')}</tbody></table></div>`;
+  } catch(e) { area.innerHTML=`<div class="alert error" style="display:block;">Server not reachable.</div>`; }
+}
+
+// Update
+function updateDonor() {
+  if (!document.getElementById('u-id').value || !document.getElementById('u-date').value) {
+    const a = document.getElementById('u-alert'); a.className='alert error'; a.textContent='Please enter Donor ID and date.'; return;
+  }
+  document.getElementById('confirm-modal').classList.add('open');
+}
+
+async function doUpdate() {
+  document.getElementById('confirm-modal').classList.remove('open');
+  const fd = new FormData();
+  fd.append('donor_id',      document.getElementById('u-id').value);
+  fd.append('last_donation', document.getElementById('u-date').value);
+  const al = document.getElementById('u-alert');
+  al.className = 'alert';
+  try {
+    const json = await (await fetch('/update_donor',{method:'POST',body:fd})).json();
+    al.className = 'alert '+(json.status==='success'?'success':'error');
+    al.textContent = json.message;
+  } catch(e) { al.className='alert error'; al.textContent='Server not reachable.'; }
+}
+
+// Init
+loadHeroStats();
+</script>
+</body>
+</html>
